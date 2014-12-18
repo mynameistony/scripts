@@ -1,5 +1,29 @@
 #!/bin/bash
 
+## Shell-Script to harvest links and titles from subreddits
+#
+## Author: mynameistony
+#
+## Usage: reddit.sh [subreddit]
+## [subreddit] is optional
+
+# Default File Hierarchy
+# 
+#/$HOME/Pictures/reddit -> set by $photoDir
+#----------------------/data/ 
+#----------------------------[subreddit]-links.txt -> contains links for each [subreddit]
+#----------------------------[subreddit]-titles.txt -> contains titles for each [subreddit]
+#--------------------------------------
+#----------------------/[subreddit]/ -> contains files downloaded from links (can be moved to a different location before download)
+#-----------------------------------[content]
+#-----------------------------------[content]
+#-----------------------------------[content]
+#
+#
+#
+#
+
+
 ######If subreddit is not passed via arg then prompt######
 if [ $# -eq 1 ]
 then
