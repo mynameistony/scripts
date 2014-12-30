@@ -5,7 +5,7 @@
 ## Author: mynameistony
 #
 ## Usage: reddit.sh [subreddit]
-## [subreddit] is optional
+## [subreddit] is optional, if omitted you will be prompted for a subreddit
 
 # Default File Hierarchy
 # 
@@ -28,12 +28,18 @@
 if [ $# -eq 1 ]
 then
 	sub=$1
+	outDir=""
+elif [ $# -eq 2 ]
+then
+	sub=$1
+	outDir=$2
 else
 	echo -n "Enter subreddit: "
 	read sub	
 	#This is a simple GUI for entering a subreddit for the MATE Desktop environment
 	#
 	#sub=`matedialog --entry --text="Enter Subreddit"`
+	outDir=""
 fi
 
 ######Some variables for ease######
@@ -59,7 +65,17 @@ fi
 ######Get JSON page -> parse for titles -> add to titles file######
 echo -n "Getting titles..."
 
-curl -s --no-keepalive -A "Mozilla" "http://www.reddit.com/r/$sub.json" | grep -o "\"title\": \"[-A-Za-z0-9 \"#/\!?()_,'.\[*\]*]*" | sed s/"\"title\": "/""/ | sed s/", \"created_utc\""/""/ > "$titles"
+curl -s --no-keepalive -A "Mozilla" "http://www.reddit.com/r/$sub.json" | grep -o "\"title\": \"[-A-Za-z0-9 \"#/\!?()_,':.\[*\]*]*" | sed s/"\"title\": \""// | sed s/"\", \".*"/""/ >"$titles"
+
+echo "" > "$titles.tmp"
+
+sed s/" "/"_"/g $titles >> "$titles.tmp"
+
+echo "" > $titles
+for title in $(cat "$titles.tmp")
+do
+	echo -e "$title</a><br><br>" >> "$titles"
+done
 
 if [ $? -ne 0 ]
 then
@@ -71,14 +87,40 @@ echo "Found $titleCount titles."
 
 ######Get JSON page -> parse for links -> add to links file######
 echo -n "Getting links..."
-curl -s --no-keepalive -A "Mozilla" "http://www.reddit.com/r/$sub.json" | grep "\"url\": \"[-A-Za-z0-9 %:\"#/\!?()_'.\[*\]*]*" -o  | grep "http://[A-Za-z0-9./_]*" -o > "$urls"
+
+curl -s --no-keepalive -A "Mozilla" "http://www.reddit.com/r/$sub.json" | grep "\"url\": \"[A-Za-z0-9 %:\"#/\!?()_'.\[*\]*]*" -o | sed s/\""url\": \""/""/ | sed s/"\""/""/ > $urls
+
+echo "" > $urls.tmp
+for url in $(cat $urls)
+do
+	echo -e "<a href=\"$url\">" >> $urls.tmp
+done
+
+cat $urls.tmp > $urls
+
 if [ $? -ne 0 ]
 then
 	echo "Couldn't get links"
 	exit 0
 fi
+
+
 linkCount=`cat $urls | wc -l`
 echo "Found $linkCount links."
+
+
+###### Create Webpage from found links & titles######
+test -e "$HOME/reddit"
+
+if [ $? -ne 0 ]
+then
+	echo "Making Reddit folder..."
+	mkdir "$HOME/reddit"
+fi
+
+echo -n "Updating $sub page..."
+paste "$urls" "$titles" | sed s/"\t"/""/ >> "$HOME/reddit/$sub.html"
+echo "Done"
 
 ###### View Titles?######
 echo -n "View titles? "
@@ -103,28 +145,32 @@ if [ $prompt == "y" ]
 then
 
 	######Download to location?######
-	echo "Downloading to: $photoDir/$sub"
-	echo -n "Download to a different folder? "
-	read prompt
-	if [ $prompt == "y" ]
+	if [ "$outDir" == "" ]
 	then
-		echo -n "Download to: $HOME/"
-		read newDir
-		
-		thisDir="$HOME/$newDir"
-		test -e "$thisDir"
-		if [ $? -ne 0 ]
+			
+		echo "Downloading to: $photoDir/$sub"
+		echo -n "Download to a different folder? "
+		read prompt
+		if [ $prompt == "y" ]
 		then
-			echo "Creating folder $thisDir"
-			mkdir -p "$thisDir"
-		fi
+			echo -n "Download to: $HOME/"
+			read newDir
+		
+			outDir="$HOME/$newDir"
+			test -e "$outDir"
+			if [ $? -ne 0 ]
+			then
+				echo "Creating folder $outDir"
+				mkdir -p "$outDir"
+			fi
 
 			
-	else
-		thisDir="$photoDir/$sub"
+		else
+			outDir="$photoDir/$sub"
+		fi
 	fi
 
-	cd "$thisDir"
+	cd "$outDir"
 	echo -n "Downloading links..."
 	wget -q -N -i "$urls"
 	echo "Downloaded $linkCount files to $thisDir"
@@ -138,6 +184,7 @@ then
 		eom *
 	fi
 fi
+
 
 echo "Thanks Bye!"
 exit 0
