@@ -1,0 +1,15 @@
+#!/bin/bash
+
+TITLE=$(blkid | grep "/dev/sr0" | grep "LABEL=\"[-A-Za-z0-9_]*\"" -o | sed s/"^LABEL=\""//g | sed s/\"//g)
+	
+NAME=$(matedialog --entry --text="Enter the name of the movie" --entry-text="$TITLE")
+
+cvlc "dvdsimple:///dev/sr0" ":disc-caching=500" ":sout=#transcode{vcodec=h264,acodec=mpga,ab=128,channels=2,samplerate=44100}:file{dst=$HOME/Desktop/$NAME.mp4,no-overwrite}" "vlc://quit" | tee $HOME/Desktop/DVDrip.log
+
+if [ $? -ne 0 ]
+	then
+		matedialog --info --text="Uh-Oh something went wrong :("
+	else
+		matedialog --info --text="'$NAME' was successfully ripped"
+fi
+
